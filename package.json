@@ -1,0 +1,16 @@
+{
+  "name": "ness-ghl-webhook",
+  "version": "1.0.0",
+  "description": "GHL to Claude bridge with Notion vault access",
+  "main": "api/webhook.js",
+  "scripts": {
+    "dev": "node api/webhook.js",
+    "build": "echo 'Build complete'"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}

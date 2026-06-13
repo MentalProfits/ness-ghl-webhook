@@ -1,37 +1,30 @@
-// api/webhook.js
-// This is your webhook endpoint. When GHL sends a request here, this code runs.
-
 const Anthropic = require('@anthropic-ai/sdk');
 
-// Initialize the Anthropic client (it reads ANTHROPIC_API_KEY from environment)
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
 
-// This is the handler that Vercel calls when a request comes in
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+
   if (req.method === 'OPTIONS') {
-    return res.status(200).json({});
+    res.status(200).end();
+    return;
   }
-  // Only accept POST requests
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Extract the prompt from GHL's webhook payload
     const { prompt, contentType = 'email' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Missing prompt in request body' });
     }
 
-    // NESS SYSTEM PROMPT
-    // This tells Claude how to think and write (your voice, your framework)
     const systemPrompt = `You are Sean G. Murphy's content creation engine for NESS (Neuro Energetic Self Sculpting).
 
 CORE VOICE RULES:
@@ -63,8 +56,6 @@ When writing emails or landing pages:
 
 Generate clean, compelling copy that converts because it's TRUE, not because it's manipulative.`;
 
-    // Call Claude with your Notion vault accessible via MCP
-    // The mcp_servers parameter gives Claude access to pull from your Notion
     const message = await client.messages.create({
       model: 'claude-opus-4-6',
       max_tokens: 2000,
@@ -74,6 +65,28 @@ Generate clean, compelling copy that converts because it's TRUE, not because it'
           role: 'user',
           content: prompt
         }
-      ],
-      // MCP connection to Notion (if you have Notion connected in your Claude account)
-      // Claude can now read from your No
+      ]
+    });
+
+    const generatedContent = message.content[0].type === 'text' 
+      ? message.content[0].text 
+      : 'Error: No text response';
+
+    return res.status(200).json({
+      success: true,
+      content: generatedContent,
+      type: contentType,
+      timestamp: new Date().toISOString(),
+      tokensUsed: message.usage.output_tokens
+    });
+
+  } catch (error) {
+    console.error('Webhook error:', error.message);
+    
+    return res.status(500).json({
+      error: 'Failed to generate content',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
